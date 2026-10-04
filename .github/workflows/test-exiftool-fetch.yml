@@ -1,10 +1,16 @@
 name: Test ExifTool Fetch
 
-# A standalone, manually-triggerable way to verify
-# scripts/fetch-exiftool.ps1 actually works end to end on a real Windows
-# runner, independent of any contributor's local network (SourceForge is
-# known to occasionally gate/block some networks and regions).
+# A standalone way to verify scripts/fetch-exiftool.ps1 actually works end
+# to end on a real Windows runner, independent of any contributor's local
+# network (SourceForge is known to occasionally gate/block some networks
+# and regions). Runs on PRs that touch the script (so changes to it are
+# verified automatically) and can also be triggered manually once this
+# file exists on the default branch.
 on:
+  pull_request:
+    paths:
+      - 'scripts/fetch-exiftool.ps1'
+      - '.github/workflows/test-exiftool-fetch.yml'
   workflow_dispatch:
 
 jobs:
