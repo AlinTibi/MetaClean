@@ -130,12 +130,21 @@ responsibility:
   not add unrecognized file types to the queue.
 - The Timestamps category targets XMP-level dates; some Office-document
   timestamps are only removable via "Remove All Metadata".
+- Fetching ExifTool from SourceForge (`scripts/fetch-exiftool.ps1`,
+  `release.yml`) can occasionally be blocked or gated by SourceForge for
+  some networks/regions. The script fails with a clear error (and a
+  manual-download fallback) rather than silently installing something
+  unverified; a pinned SHA-256 check always runs before installation.
 
 ## ExifTool attribution
 
 MetaClean bundles the official ExifTool Windows distribution by Phil
-Harvey, unmodified. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-for full attribution and licensing details.
+Harvey, unmodified. Both the release workflow and the local dev fetch
+script (`scripts/fetch-exiftool.ps1`) download it directly from the
+SourceForge file exiftool.org itself links to, pinned to an exact version
+and verified against a pinned SHA-256 before use. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for full attribution and
+licensing details.
 
 ## License
 
