@@ -107,8 +107,7 @@ func (e *Engine) cleanToCopy(ctx context.Context, req model.CleanRequest, entry 
 	}
 
 	result.OutputPath = outputPath
-	e.verify(ctx, outputPath, &result)
-	result.Success = true
+	result.Success = e.verify(ctx, outputPath, &result)
 	return result
 }
 
@@ -130,24 +129,27 @@ func (e *Engine) cleanInPlace(ctx context.Context, req model.CleanRequest, entry
 	}
 
 	result.OutputPath = entry.Path
-	e.verify(ctx, entry.Path, &result)
-	result.Success = true
+	result.Success = e.verify(ctx, entry.Path, &result)
 	return result
 }
 
 // verify re-scans the cleaned file and records what metadata (if any)
 // remains, so the UI can show an honest before/after comparison instead
-// of assuming the removal was complete.
-func (e *Engine) verify(ctx context.Context, path string, result *model.CleanFileResult) {
+// of assuming the removal was complete. It reports whether verification
+// itself succeeded: ExifTool reporting success on the write is not
+// sufficient on its own to call the file successfully cleaned — if
+// MetaClean can't re-read the result, it cannot honestly claim success,
+// even though remaining metadata (including zero) is a perfectly valid
+// verified outcome.
+func (e *Engine) verify(ctx context.Context, path string, result *model.CleanFileResult) bool {
 	verified := e.Scanner.Scan(ctx, "verify", path)
 	if verified.Status == model.StatusError {
-		// Verification itself failing doesn't change whether cleaning
-		// succeeded; just surface that we couldn't confirm the result.
-		result.Error = "cleaned, but verification failed: " + verified.Error
-		return
+		result.Error = "metadata removal ran, but MetaClean could not verify the result: " + verified.Error
+		return false
 	}
 	result.AfterCount = verified.MetadataCount()
 	result.Remaining = verified.Metadata
+	return true
 }
 
 func copyFile(src, dst string) error {

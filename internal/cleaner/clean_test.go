@@ -193,6 +193,66 @@ func TestCleanInPlace_BacksUpThenReplacesOriginal(t *testing.T) {
 	}
 }
 
+func TestVerify_ReturnsFalseWithClearErrorWhenRescanFails(t *testing.T) {
+	engine := newTestEngine(t)
+
+	result := model.CleanFileResult{}
+	ok := engine.verify(context.Background(), filepath.Join(t.TempDir(), "does-not-exist.jpg"), &result)
+
+	if ok {
+		t.Fatal("expected verify to return false when the output file can't be re-scanned")
+	}
+	if !strings.Contains(result.Error, "could not verify") {
+		t.Errorf("expected a clear verification-failure message, got: %q", result.Error)
+	}
+}
+
+// TestCleanToCopy_SuccessFalseWhenVerificationFails reproduces the exact
+// reported bug: ExifTool's write succeeds, but the post-clean
+// verification re-scan fails. Success must be false in that case, not
+// true — a successful ExifTool write is necessary but not sufficient for
+// MetaClean to claim the file was cleaned. This is done by pointing the
+// Engine's verification Scanner at a broken exiftool path while leaving
+// the Engine's own (cleaning) Runner pointed at the real binary, so the
+// write genuinely succeeds and only verification fails.
+func TestCleanToCopy_SuccessFalseWhenVerificationFails(t *testing.T) {
+	realRunner, err := exiftool.NewRunner()
+	if err != nil {
+		t.Skipf("skipping: bundled exiftool not available (%v)", err)
+	}
+
+	dir := t.TempDir()
+	srcPath := newTaggedJPEG(t, realRunner, dir)
+	entry := scanner.NewEngine(realRunner).Scan(context.Background(), "f1", srcPath)
+
+	brokenRunner := &exiftool.Runner{Path: filepath.Join(dir, "no-such-exiftool.exe")}
+	engine := &Engine{
+		Scanner: scanner.NewEngine(brokenRunner), // used only for post-clean verification
+		Runner:  realRunner,                      // used for the actual clean
+	}
+
+	req := model.CleanRequest{
+		Profile:      model.ProfileAll,
+		OutputFolder: filepath.Join(dir, "out"),
+		Suffix:       "_clean",
+	}
+	results := engine.CleanBatch(context.Background(), req, []*model.FileEntry{entry}, nil)
+	result := results[0]
+
+	if result.Success {
+		t.Fatalf("expected Success=false when verification fails, even though the ExifTool write itself succeeded")
+	}
+	if !strings.Contains(result.Error, "could not verify") {
+		t.Errorf("expected a clear verification-failure message, got: %q", result.Error)
+	}
+	if result.OutputPath == "" {
+		t.Fatal("expected OutputPath to still be reported")
+	}
+	if _, err := os.Stat(result.OutputPath); err != nil {
+		t.Errorf("expected the cleaned output file to exist on disk (the write itself succeeded): %v", err)
+	}
+}
+
 func TestCleanOne_RejectsNonWritableFormatWithClearError(t *testing.T) {
 	engine := newTestEngine(t)
 	dir := t.TempDir()
