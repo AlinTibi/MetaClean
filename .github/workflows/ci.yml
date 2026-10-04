@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build frontend, vet, test, build app
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # main.go embeds frontend/dist (//go:embed all:frontend/dist); that
+      # directory is gitignored build output, so it must exist before
+      # go vet/test/build can even compile the main package, and well
+      # before `wails build -s` (which skips rebuilding it).
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test
+        run: go test ./... -v
+
+      - name: Determine pinned Wails CLI version from go.mod
+        id: wails_version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path go.mod -Pattern 'github.com/wailsapp/wails/v2\s+(\S+)'
+          $version = $match.Matches[0].Groups[1].Value
+          Write-Output "Pinned Wails version: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ steps.wails_version.outputs.version }}
+
+      - name: Build application
+        run: wails build -clean -s

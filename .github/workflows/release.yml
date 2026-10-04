@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  # The official, pre-built Windows ExifTool distribution (Phil Harvey,
+  # exiftool.org) is mirrored on npm by the exiftool-vendored.exe package,
+  # which vendors that exact binary unmodified. Pinning its version pins
+  # the bundled ExifTool version (13.59.3 vendors ExifTool 13.59).
+  EXIFTOOL_NPM_VERSION: 13.59.3
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Determine pinned Wails CLI version from go.mod
+        id: wails_version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path go.mod -Pattern 'github.com/wailsapp/wails/v2\s+(\S+)'
+          $version = $match.Matches[0].Groups[1].Value
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ steps.wails_version.outputs.version }}
+
+      - name: Build application
+        run: wails build -clean -s
+
+      - name: Fetch pinned ExifTool (official Windows build)
+        shell: pwsh
+        run: |
+          $ver = "${{ env.EXIFTOOL_NPM_VERSION }}"
+          $url = "https://registry.npmjs.org/exiftool-vendored.exe/-/exiftool-vendored.exe-$ver.tgz"
+          Invoke-WebRequest -Uri $url -OutFile exiftool-vendored.tgz
+          tar xzf exiftool-vendored.tgz
+          New-Item -ItemType Directory -Force -Path build/bin/exiftool | Out-Null
+          Copy-Item -Recurse -Force package/bin/* build/bin/exiftool/
+          & "build/bin/exiftool/exiftool.exe" -ver
+
+      - name: Package release
+        id: package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zipName = "MetaClean-$version-win-x64.zip"
+          $checksumName = "$zipName.sha256"
+
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item "build/bin/MetaClean.exe" "stage/MetaClean.exe"
+          Copy-Item -Recurse "build/bin/exiftool" "stage/exiftool"
+          Copy-Item "README.md" "stage/README.md"
+          Copy-Item "LICENSE" "stage/LICENSE"
+          Copy-Item "THIRD_PARTY_NOTICES.md" "stage/THIRD_PARTY_NOTICES.md"
+
+          Compress-Archive -Path "stage/*" -DestinationPath $zipName -CompressionLevel Optimal
+          $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zipName" | Set-Content -NoNewline $checksumName
+
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+          "checksum_name=$checksumName" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "${{ github.ref_name }}"
+          "${{ steps.package.outputs.zip_name }}"
+          "${{ steps.package.outputs.checksum_name }}"
+          --title "MetaClean ${{ github.ref_name }}"
+          --generate-notes
