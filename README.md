@@ -130,21 +130,27 @@ responsibility:
   not add unrecognized file types to the queue.
 - The Timestamps category targets XMP-level dates; some Office-document
   timestamps are only removable via "Remove All Metadata".
-- Fetching ExifTool from SourceForge (`scripts/fetch-exiftool.ps1`,
-  `release.yml`) can occasionally be blocked or gated by SourceForge for
-  some networks/regions. The script fails with a clear error (and a
-  manual-download fallback) rather than silently installing something
-  unverified; a pinned SHA-256 check always runs before installation.
+- ExifTool's official SourceForge download blocks automated/CI traffic
+  with HTTP 403 (confirmed from a real GitHub Actions runner, not just
+  locally), so `scripts/fetch-exiftool.ps1` sources it via the
+  exiftool-vendored.exe npm package instead — see "ExifTool attribution"
+  below for the full reasoning and what is/isn't verified.
 
 ## ExifTool attribution
 
-MetaClean bundles the official ExifTool Windows distribution by Phil
-Harvey, unmodified. Both the release workflow and the local dev fetch
-script (`scripts/fetch-exiftool.ps1`) download it directly from the
-SourceForge file exiftool.org itself links to, pinned to an exact version
-and verified against a pinned SHA-256 before use. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for full attribution and
-licensing details.
+MetaClean bundles ExifTool, Phil Harvey's software, unmodified. His
+official Windows build is published via SourceForge, but that download
+blocks automated/CI requests with HTTP 403 — verified against a real
+GitHub Actions `windows-latest` runner, not just a local network quirk.
+Both the release workflow and the local dev fetch script
+(`scripts/fetch-exiftool.ps1`) instead obtain the identical, unmodified
+binary via the **exiftool-vendored.exe** npm package (MIT-licensed
+wrapper; ExifTool itself keeps its own license), pinned to the package
+version that vendors ExifTool 13.59 and verified against npm's own
+published integrity hash before use. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full reasoning,
+the official exiftool.org checksums kept for reference, and licensing
+details.
 
 ## License
 
