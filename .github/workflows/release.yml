@@ -47,13 +47,20 @@ jobs:
       - name: Build application
         run: wails build -clean -s
 
-      # Downloads the official Windows ExifTool build directly from its
-      # publisher's own distribution file (exiftool.org links straight to
-      # this SourceForge release), verifying it against a pinned SHA-256
-      # before anything is extracted. See scripts/fetch-exiftool.ps1 for
-      # the pinned version/hash and full provenance notes; this is the
-      # same script contributors use locally, kept in one place.
-      - name: Fetch pinned ExifTool (official Windows build)
+      # ExifTool is Phil Harvey's software (exiftool.org). His official
+      # Windows build is published via SourceForge, but that download
+      # blocks automated/CI requests (HTTP 403 — verified against a real
+      # GitHub Actions windows-latest runner, not a local quirk), so this
+      # does NOT download directly from SourceForge/the publisher. It
+      # instead runs scripts/fetch-exiftool.ps1, which pulls the pinned
+      # exiftool-vendored.exe npm package — a transparent, MIT-licensed
+      # repackaging that vendors Phil Harvey's official Windows build
+      # unmodified. That script owns the pinned package version and
+      # verifies its integrity (npm's published SHA-512) before
+      # extracting anything; this is the same script contributors run
+      # locally, kept in one place. Runtime stays fully offline — this
+      # only ever runs at build/release time.
+      - name: Fetch pinned ExifTool (vendored npm package)
         shell: pwsh
         run: ./scripts/fetch-exiftool.ps1
 
