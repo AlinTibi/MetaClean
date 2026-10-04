@@ -72,6 +72,16 @@ type categoryRule struct {
 	exact         map[string]bool
 	containsAny   []string
 	removableArgs []string // the exiftool args this category maps to, if any
+
+	// removableIf, when set, additionally gates whether a match is
+	// reported as removable: a tag can be real and sensitive without
+	// this category's removableArgs actually being able to strip it
+	// (e.g. a non-XMP timestamp tag). When nil, any match is removable.
+	removableIf func(group string) bool
+}
+
+func isXMPGroup(group string) bool {
+	return strings.HasPrefix(group, "XMP")
 }
 
 // classificationRules is evaluated in order; the first match wins. GPS is
@@ -91,7 +101,10 @@ var classificationRules = []categoryRule{
 			"xpauthor": true, "ownername": true, "rights": true, "credit": true,
 			"lastmodifiedby": true,
 		},
-		removableArgs: []string{"-author=", "-creator=", "-by-line=", "-artist=", "-xpauthor=", "-ownername=", "-lastmodifiedby="},
+		removableArgs: []string{
+			"-author=", "-creator=", "-by-line=", "-artist=", "-xpauthor=", "-ownername=",
+			"-lastmodifiedby=", "-rights=", "-credit=",
+		},
 	},
 	{
 		category: model.CategoryCamera,
@@ -106,9 +119,11 @@ var classificationRules = []categoryRule{
 		},
 	},
 	{
-		category:      model.CategorySoftware,
-		containsAny:   []string{"software", "creatortool", "application", "producer", "toolkit"},
-		removableArgs: []string{"-software=", "-creatortool=", "-producer=", "-applicationversion=", "-toolkit="},
+		category:    model.CategorySoftware,
+		containsAny: []string{"software", "creatortool", "application", "producer", "xmptoolkit"},
+		removableArgs: []string{
+			"-software=", "-creatortool=", "-producer=", "-applicationversion=", "-xmptoolkit=",
+		},
 	},
 	{
 		category: model.CategoryCompany,
@@ -118,14 +133,32 @@ var classificationRules = []categoryRule{
 		removableArgs: []string{"-company=", "-manager="},
 	},
 	{
-		category:      model.CategoryComments,
-		containsAny:   []string{"comment", "description", "caption", "subject", "keyword"},
-		removableArgs: []string{"-comment=", "-usercomment=", "-description=", "-imagedescription=", "-caption-abstract=", "-xmp:description="},
+		category: model.CategoryComments,
+		// "subject" is an exact match (not a substring) deliberately:
+		// EXIF camera tags like SubjectDistance/SubjectArea/
+		// SubjectLocation contain "subject" but describe focus metering,
+		// not a privacy-relevant topic/keyword field, and would
+		// otherwise be mis-flagged as sensitive.
+		exact:       map[string]bool{"subject": true, "keywords": true},
+		containsAny: []string{"comment", "description", "caption"},
+		removableArgs: []string{
+			"-comment=", "-usercomment=", "-description=", "-imagedescription=", "-caption-abstract=",
+			"-xmp:description=", "-subject=", "-keywords=",
+		},
 	},
 	{
-		category:      model.CategoryTimestamps,
-		containsAny:   []string{"date", "time"},
-		removableArgs: []string{"-xmp:createdate=", "-xmp:modifydate=", "-xmp:metadatadate="},
+		category:    model.CategoryTimestamps,
+		containsAny: []string{"date", "time"},
+		removableArgs: []string{
+			"-xmp:createdate=", "-xmp:modifydate=", "-xmp:metadatadate=",
+		},
+		// The removal args above only reach XMP-namespaced date/time
+		// tags (a deliberate, documented scope: broader date removal is
+		// available via "Remove All Metadata"). A non-XMP date/time tag
+		// (e.g. EXIF DateTimeOriginal) is still flagged sensitive so the
+		// user can see it, but must not be reported as removable by this
+		// category, since nothing in removableArgs actually targets it.
+		removableIf: isXMPGroup,
 	},
 }
 
@@ -151,14 +184,22 @@ func Classify(group, tag string) (category model.Category, sensitive bool, remov
 	lower := strings.ToLower(tag)
 
 	for _, rule := range classificationRules {
-		if rule.exact[lower] {
-			return rule.category, true, true
-		}
-		for _, substr := range rule.containsAny {
-			if strings.Contains(lower, substr) {
-				return rule.category, true, true
+		matched := rule.exact[lower]
+		if !matched {
+			for _, substr := range rule.containsAny {
+				if strings.Contains(lower, substr) {
+					matched = true
+					break
+				}
 			}
 		}
+		if !matched {
+			continue
+		}
+		if rule.removableIf != nil && !rule.removableIf(group) {
+			return rule.category, true, false
+		}
+		return rule.category, true, true
 	}
 
 	if group == "Composite" {

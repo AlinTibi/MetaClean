@@ -64,7 +64,10 @@ let settings: Settings;
 let outputFolder = '';
 let cleaning = false;
 
-const CUSTOM_CATEGORIES: Category[] = ['gps', 'author', 'camera', 'software', 'company', 'comments', 'timestamps', 'other'];
+// "other" is intentionally excluded: it has no removal args (no safe
+// blanket mapping — see scanner.CategoryRemovalArgs), so offering it as a
+// selectable Custom cleaning category would be a no-op checkbox.
+const CUSTOM_CATEGORIES: Category[] = ['gps', 'author', 'camera', 'software', 'company', 'comments', 'timestamps'];
 
 // --- Status bar helpers ------------------------------------------------
 

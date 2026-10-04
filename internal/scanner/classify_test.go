@@ -68,6 +68,83 @@ func TestClassifyTimestamps(t *testing.T) {
 	}
 }
 
+// TestRemovableTagsAreActuallyTargetedByRemovalArgs is the core
+// sensitive/removable correctness contract: for every tag Classify()
+// marks removable=true, CategoryRemovalArgs() for that category must
+// contain the exact exiftool flag that targets it. A tag flagged
+// removable with no corresponding arg is a silent no-op bug — exactly
+// what this test exists to catch.
+func TestRemovableTagsAreActuallyTargetedByRemovalArgs(t *testing.T) {
+	cases := []struct {
+		group       string
+		tag         string
+		wantCat     model.Category
+		wantArgFlag string // the exact entry expected in CategoryRemovalArgs
+	}{
+		{"IPTC", "Rights", model.CategoryAuthor, "-rights="},
+		{"IPTC", "Credit", model.CategoryAuthor, "-credit="},
+		{"XMP-dc", "Subject", model.CategoryComments, "-subject="},
+		{"IPTC", "Keywords", model.CategoryComments, "-keywords="},
+		{"XMP-x", "XMPToolkit", model.CategorySoftware, "-xmptoolkit="},
+		{"EXIF", "Make", model.CategoryCamera, "-make="},
+		{"EXIF", "Software", model.CategorySoftware, "-software="},
+		{"GPS", "GPSLatitude", model.CategoryGPS, "-gps:all="},
+		{"XMP-xmp", "CreateDate", model.CategoryTimestamps, "-xmp:createdate="},
+	}
+
+	for _, c := range cases {
+		gotCat, sensitive, removable := Classify(c.group, c.tag)
+		if gotCat != c.wantCat {
+			t.Errorf("%s:%s: expected category %v, got %v", c.group, c.tag, c.wantCat, gotCat)
+			continue
+		}
+		if !sensitive || !removable {
+			t.Errorf("%s:%s: expected sensitive=true removable=true, got sensitive=%v removable=%v", c.group, c.tag, sensitive, removable)
+			continue
+		}
+
+		args := CategoryRemovalArgs(gotCat)
+		found := false
+		for _, a := range args {
+			if a == c.wantArgFlag {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%s:%s classified removable, but %q is not in CategoryRemovalArgs(%v)=%v", c.group, c.tag, c.wantArgFlag, gotCat, args)
+		}
+	}
+}
+
+func TestClassifySubjectDistanceIsNotMisflaggedAsSensitive(t *testing.T) {
+	// SubjectDistance/SubjectArea/SubjectLocation are EXIF focus-metering
+	// tags, not the privacy-relevant XMP-dc:Subject (keywords/topic)
+	// field. A naive "contains 'subject'" rule would wrongly flag them.
+	for _, tag := range []string{"SubjectDistance", "SubjectArea", "SubjectLocation"} {
+		cat, sensitive, _ := Classify("EXIF", tag)
+		if sensitive {
+			t.Errorf("%s: expected NOT sensitive (camera focus metadata, not a privacy field), got category=%v sensitive=true", tag, cat)
+		}
+	}
+}
+
+func TestClassifyNonXMPTimestampIsSensitiveButNotRemovable(t *testing.T) {
+	// DateTimeOriginal (EXIF) is not reachable by the Timestamps
+	// category's XMP-scoped removal args, so it must not claim
+	// removable=true even though it's correctly flagged sensitive.
+	cat, sensitive, removable := Classify("EXIF", "DateTimeOriginal")
+	if cat != model.CategoryTimestamps {
+		t.Errorf("DateTimeOriginal: expected CategoryTimestamps, got %v", cat)
+	}
+	if !sensitive {
+		t.Errorf("DateTimeOriginal: expected sensitive=true")
+	}
+	if removable {
+		t.Errorf("DateTimeOriginal: expected removable=false (not targeted by this category's XMP-only removal args)")
+	}
+}
+
 func TestClassifyGPSBeforeTimestamp(t *testing.T) {
 	// GPSDateStamp must classify as GPS, not Timestamps, even though it
 	// contains "date" — this exercises rule ordering.
