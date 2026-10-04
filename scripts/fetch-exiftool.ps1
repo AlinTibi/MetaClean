@@ -74,7 +74,8 @@ for ($attempt = 1; $attempt -le 3; $attempt++) {
         $downloadOk = $true
         break
     } catch {
-        Write-Warning "Attempt $attempt failed: $_"
+        $statusCode = $_.Exception.Response?.StatusCode
+        Write-Warning "Attempt $attempt failed: [$($_.Exception.GetType().FullName)] $($_.Exception.Message) (HTTP status: $statusCode)"
         Start-Sleep -Seconds (2 * $attempt)
     }
 }
