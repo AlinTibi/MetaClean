@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>MetaClean</title>
+</head>
+<body>
+<div id="app">
+    <header class="toolbar">
+        <div class="brand">MetaClean</div>
+
+        <div class="toolbar-group">
+            <button id="btn-add-files" class="btn">Add Files</button>
+            <button id="btn-add-folder" class="btn">Add Folder</button>
+            <button id="btn-remove-selected" class="btn" disabled>Remove Selected</button>
+            <button id="btn-clear" class="btn" disabled>Clear List</button>
+        </div>
+
+        <div class="toolbar-group toolbar-group-right">
+            <label class="field-inline">
+                <span>Profile</span>
+                <select id="profile-select">
+                    <option value="privacy">Privacy Clean</option>
+                    <option value="all">Remove All Metadata</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </label>
+            <button id="btn-output-folder" class="btn" title="Choose where cleaned copies are saved">Output Folder</button>
+            <button id="btn-open-output-folder" class="btn btn-icon" title="Open output folder" disabled>📂</button>
+            <button id="btn-clean" class="btn btn-primary" disabled>Clean</button>
+            <button id="btn-cancel" class="btn btn-danger hidden">Cancel</button>
+            <button id="btn-settings" class="btn btn-icon" title="Settings">⚙</button>
+        </div>
+    </header>
+
+    <div id="custom-categories" class="custom-categories hidden"></div>
+
+    <main class="panes">
+        <section class="pane pane-queue" id="drop-zone">
+            <div class="pane-header">
+                <span>Files</span>
+                <span id="queue-summary" class="muted"></span>
+            </div>
+            <div class="queue-scroll">
+                <table class="queue-table">
+                    <thead>
+                    <tr>
+                        <th class="col-check"><input type="checkbox" id="select-all"/></th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Metadata</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody id="queue-body"></tbody>
+                </table>
+                <div id="drop-hint" class="drop-hint">Drag &amp; drop files or folders here, or use Add Files</div>
+            </div>
+        </section>
+
+        <section class="pane pane-inspector">
+            <div class="pane-header">
+                <span id="inspector-title">Metadata Inspector</span>
+                <div class="inspector-actions">
+                    <button id="btn-export-csv" class="btn btn-small" disabled>Export CSV</button>
+                    <button id="btn-export-json" class="btn btn-small" disabled>Export JSON</button>
+                </div>
+            </div>
+            <input id="metadata-search" class="search-input" type="text" placeholder="Filter metadata…" disabled/>
+            <div id="inspector-body" class="inspector-body">
+                <div class="inspector-empty">Select a file to inspect its metadata.</div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="status-bar">
+        <div class="progress-track" id="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span id="status-text">Ready.</span>
+        <span id="engine-status" class="engine-status"></span>
+    </footer>
+</div>
+
+<div id="settings-modal" class="modal hidden">
+    <div class="modal-card">
+        <h2>Settings</h2>
+        <label class="field">
+            <span>Default cleaning profile</span>
+            <select id="set-default-profile">
+                <option value="privacy">Privacy Clean</option>
+                <option value="all">Remove All Metadata</option>
+                <option value="custom">Custom</option>
+            </select>
+        </label>
+        <label class="field">
+            <span>Output filename suffix</span>
+            <input id="set-suffix" type="text" placeholder="_clean"/>
+        </label>
+        <label class="field-checkbox">
+            <input id="set-preserve-timestamps" type="checkbox"/>
+            <span>Preserve timestamps in Privacy Clean</span>
+        </label>
+        <label class="field-checkbox">
+            <input id="set-replace-original" type="checkbox"/>
+            <span>Replace original files (creates a backup first)</span>
+        </label>
+        <p id="replace-warning" class="warning hidden">
+            ⚠ Replace mode overwrites your original files. A backup copy is always made first, but please keep
+            your own copies of anything important.
+        </p>
+        <div class="modal-actions">
+            <button id="btn-settings-cancel" class="btn">Cancel</button>
+            <button id="btn-settings-save" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="confirm-modal" class="modal hidden">
+    <div class="modal-card">
+        <h2>Replace original files?</h2>
+        <p>
+            This will overwrite the selected files in place. MetaClean will create a backup copy of each file
+            first, but this action modifies your originals.
+        </p>
+        <div class="modal-actions">
+            <button id="btn-confirm-cancel" class="btn">Cancel</button>
+            <button id="btn-confirm-proceed" class="btn btn-danger">Replace Originals</button>
+        </div>
+    </div>
+</div>
+
+<script src="./src/main.ts" type="module"></script>
+</body>
+</html>
