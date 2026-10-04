@@ -1,0 +1,10 @@
+build/bin
+node_modules
+frontend/dist
+
+# Local developer cache of the bundled ExifTool distribution (downloaded by
+# scripts/fetch-exiftool.ps1 or the release workflow; never committed).
+/tools/exiftool/
+
+# Local settings/test output
+*.local.json

@@ -1,0 +1,43 @@
+name: Test ExifTool Fetch
+
+# A standalone way to verify scripts/fetch-exiftool.ps1 actually works end
+# to end on a real Windows runner, independent of any contributor's local
+# network (SourceForge is known to occasionally gate/block some networks
+# and regions). Runs on PRs that touch the script (so changes to it are
+# verified automatically) and can also be triggered manually once this
+# file exists on the default branch.
+on:
+  pull_request:
+    paths:
+      - 'scripts/fetch-exiftool.ps1'
+      - '.github/workflows/test-exiftool-fetch.yml'
+  workflow_dispatch:
+
+jobs:
+  test-fetch:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run fetch-exiftool.ps1 from a clean state
+        shell: pwsh
+        run: ./scripts/fetch-exiftool.ps1
+
+      - name: Verify the fetched build
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'tools/exiftool/exiftool.exe')) {
+            throw "tools/exiftool/exiftool.exe was not created"
+          }
+          if (-not (Test-Path 'tools/exiftool/exiftool_files')) {
+            throw "tools/exiftool/exiftool_files was not created"
+          }
+
+          $version = (& 'tools/exiftool/exiftool.exe' -ver).Trim()
+          Write-Output "exiftool.exe -ver => $version"
+          if ($version -ne '13.59') {
+            throw "Expected version 13.59, got '$version'"
+          }
+
+          Write-Output "fetch-exiftool.ps1 verified successfully on a real windows-latest runner."
