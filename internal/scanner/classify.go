@@ -119,10 +119,17 @@ var classificationRules = []categoryRule{
 		},
 	},
 	{
-		category:    model.CategorySoftware,
-		containsAny: []string{"software", "creatortool", "application", "producer", "xmptoolkit"},
+		category: model.CategorySoftware,
+		// "applicationversion" is an exact match (not a substring)
+		// deliberately: IPTC's ApplicationRecordVersion is just a format
+		// version number (e.g. "2"), not application/software identity,
+		// and would otherwise be mis-flagged as sensitive by a broad
+		// "application" substring rule.
+		exact:       map[string]bool{"applicationversion": true},
+		containsAny: []string{"software", "creatortool", "producer", "xmptoolkit"},
 		removableArgs: []string{
-			"-software=", "-creatortool=", "-producer=", "-applicationversion=", "-xmptoolkit=",
+			"-software=", "-softwareversion=", "-historysoftwareagent=", "-creatortool=",
+			"-producer=", "-applicationversion=", "-xmptoolkit=",
 		},
 	},
 	{
@@ -134,16 +141,18 @@ var classificationRules = []categoryRule{
 	},
 	{
 		category: model.CategoryComments,
-		// "subject" is an exact match (not a substring) deliberately:
-		// EXIF camera tags like SubjectDistance/SubjectArea/
-		// SubjectLocation contain "subject" but describe focus metering,
-		// not a privacy-relevant topic/keyword field, and would
-		// otherwise be mis-flagged as sensitive.
-		exact:       map[string]bool{"subject": true, "keywords": true},
+		// "subject"/"keywords" are exact matches (not substrings)
+		// deliberately: EXIF camera tags like SubjectDistance/
+		// SubjectArea/SubjectLocation contain "subject" but describe
+		// focus metering, not a privacy-relevant topic/keyword field,
+		// and would otherwise be mis-flagged as sensitive. The Windows
+		// Explorer "XP" variants (XPSubject, XPKeywords) are listed
+		// separately since they're distinct writable tags, not aliases.
+		exact:       map[string]bool{"subject": true, "keywords": true, "xpsubject": true, "xpkeywords": true},
 		containsAny: []string{"comment", "description", "caption"},
 		removableArgs: []string{
-			"-comment=", "-usercomment=", "-description=", "-imagedescription=", "-caption-abstract=",
-			"-xmp:description=", "-subject=", "-keywords=",
+			"-comment=", "-usercomment=", "-xpcomment=", "-description=", "-imagedescription=",
+			"-caption-abstract=", "-xmp:description=", "-subject=", "-keywords=", "-xpsubject=", "-xpkeywords=",
 		},
 	},
 	{

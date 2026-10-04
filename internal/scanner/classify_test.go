@@ -86,6 +86,12 @@ func TestRemovableTagsAreActuallyTargetedByRemovalArgs(t *testing.T) {
 		{"XMP-dc", "Subject", model.CategoryComments, "-subject="},
 		{"IPTC", "Keywords", model.CategoryComments, "-keywords="},
 		{"XMP-x", "XMPToolkit", model.CategorySoftware, "-xmptoolkit="},
+		{"IFD0", "XPComment", model.CategoryComments, "-xpcomment="},
+		{"IFD0", "XPSubject", model.CategoryComments, "-xpsubject="},
+		{"IFD0", "XPKeywords", model.CategoryComments, "-xpkeywords="},
+		{"XMP-xmpMM", "HistorySoftwareAgent", model.CategorySoftware, "-historysoftwareagent="},
+		{"PNG", "SoftwareVersion", model.CategorySoftware, "-softwareversion="},
+		{"EXIF", "ApplicationVersion", model.CategorySoftware, "-applicationversion="},
 		{"EXIF", "Make", model.CategoryCamera, "-make="},
 		{"EXIF", "Software", model.CategorySoftware, "-software="},
 		{"GPS", "GPSLatitude", model.CategoryGPS, "-gps:all="},
@@ -126,6 +132,16 @@ func TestClassifySubjectDistanceIsNotMisflaggedAsSensitive(t *testing.T) {
 		if sensitive {
 			t.Errorf("%s: expected NOT sensitive (camera focus metadata, not a privacy field), got category=%v sensitive=true", tag, cat)
 		}
+	}
+}
+
+func TestClassifyApplicationRecordVersionIsNotMisflaggedAsSensitive(t *testing.T) {
+	// IPTC's ApplicationRecordVersion is just a format version number
+	// (e.g. "2"), not application/software identity. A naive "contains
+	// 'application'" rule would wrongly flag it.
+	cat, sensitive, _ := Classify("IPTC", "ApplicationRecordVersion")
+	if sensitive {
+		t.Errorf("ApplicationRecordVersion: expected NOT sensitive (a format version number, not software identity), got category=%v sensitive=true", cat)
 	}
 }
 
