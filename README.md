@@ -9,9 +9,19 @@ Under the hood, MetaClean uses [ExifTool](https://exiftool.org) (Phil
 Harvey) as its metadata engine, bundled with the application — you never
 need to install it yourself.
 
+## Current release and download
+
+[MetaClean v1.0.0](https://github.com/AlinTibi/MetaClean/releases/tag/v1.0.0)
+is the current Windows x64 release.
+
+[Download the portable ZIP](https://github.com/AlinTibi/MetaClean/releases/download/v1.0.0/MetaClean-v1.0.0-win-x64.zip),
+extract it, and run `MetaClean.exe`. Keep the extracted files together.
+Microsoft Edge WebView2 Runtime is required. Install it separately if missing.
+Keep the bundled `exiftool/` directory beside `MetaClean.exe`.
+
 ## Screenshots
 
-_Coming soon._
+![MetaClean Windows application](docs/images/main.webp)
 
 ## Supported formats
 
@@ -48,7 +58,7 @@ broken file.
 - Three cleaning modes: **Privacy Clean** (common personal/privacy fields,
   keeps the file otherwise usable), **Remove All Metadata**, and
   **Custom** (pick exactly which categories to strip)
-- Safe by default: cleaning writes a sanitized **copy** with a
+- Safe by default: cleaning writes a cleaned **copy** with a
   configurable suffix (default `_clean`) into a folder you choose —
   your originals are never touched
 - Optional "Replace original" mode, gated behind an explicit warning and
@@ -61,6 +71,13 @@ broken file.
 - Cancel an in-progress batch; the UI stays responsive throughout since
   cleaning runs in the background
 - Dark, compact, professional UI
+
+## PDF limitations
+
+ExifTool edits PDF metadata incrementally. Previous metadata may remain in the
+file and can be recovered. A clean metadata scan does not prove secure PDF
+sanitization or anonymization. Review the document content separately and do not
+rely on MetaClean to remove confidential text, images, or earlier PDF revisions.
 
 ## Privacy & safety
 
@@ -77,8 +94,8 @@ broken file.
 
 Requirements:
 
-- Go 1.22+
-- Node.js 18+
+- Go 1.25+
+- Node.js 22.12+
 - The [Wails v2 CLI](https://wails.io/docs/gettingstarted/installation),
   pinned to the version in `go.mod`:
   `go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0`
@@ -157,3 +174,19 @@ details.
 MetaClean's source code is [MIT licensed](LICENSE). The bundled ExifTool
 binary retains its own license — see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Support and security
+
+For software questions, email [support@almarfeld.com](mailto:support@almarfeld.com).
+Report reproducible bugs and feature requests in [MetaClean issues](https://github.com/AlinTibi/MetaClean/issues).
+Do not post private files or credentials in public issues.
+
+Report vulnerabilities privately to [security@almarfeld.com](mailto:security@almarfeld.com).
+See [SUPPORT.md](SUPPORT.md) and [SECURITY.md](SECURITY.md).
+
+---
+
+**ALMARFELD** · Independent software development · [almarfeld.com](https://almarfeld.com)
+
+[MetaClean product page](https://almarfeld.com/software/metaclean/) ·
+[General enquiries](mailto:contact@almarfeld.com) · [MIT license](LICENSE)

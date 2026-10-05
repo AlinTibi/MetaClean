@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Software support
+    url: https://almarfeld.com/support/
+    about: Questions about installation and use
+  - name: Private security report
+    url: mailto:security@almarfeld.com
+    about: Report vulnerabilities privately, without publishing sensitive details
