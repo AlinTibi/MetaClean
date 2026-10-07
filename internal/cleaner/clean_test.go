@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -15,17 +16,17 @@ import (
 	"MetaClean/internal/scanner"
 )
 
-// newTestEngine locates the real bundled exiftool and builds a cleaner
-// Engine against it, skipping the test when exiftool isn't available
-// (e.g. in CI, which does not download it — only the release workflow
-// does). Locally, where tools/exiftool/ has been populated by
-// scripts/fetch-exiftool.ps1, this runs for real against the actual
-// binary, exercising the full read -> clean -> verify pipeline.
+// Integration tests require the pinned real engine. Missing it is a failure,
+// not a skipped safety check; both CI and local setup fetch it explicitly.
 func newTestEngine(t *testing.T) *Engine {
 	t.Helper()
+	if os.Getenv("METACLEAN_EXIFTOOL_PATH") == "" {
+		_, source, _, _ := runtime.Caller(0)
+		t.Setenv("METACLEAN_EXIFTOOL_PATH", filepath.Join(filepath.Dir(source), "..", "..", "tools", "exiftool", "exiftool.exe"))
+	}
 	runner, err := exiftool.NewRunner()
 	if err != nil {
-		t.Skipf("skipping: bundled exiftool not available (%v)", err)
+		t.Fatalf("real ExifTool required; run scripts/fetch-exiftool.ps1: %v", err)
 	}
 	scanEngine := scanner.NewEngine(runner)
 	return NewEngine(scanEngine, runner)
@@ -216,10 +217,7 @@ func TestVerify_ReturnsFalseWithClearErrorWhenRescanFails(t *testing.T) {
 // the Engine's own (cleaning) Runner pointed at the real binary, so the
 // write genuinely succeeds and only verification fails.
 func TestCleanToCopy_SuccessFalseWhenVerificationFails(t *testing.T) {
-	realRunner, err := exiftool.NewRunner()
-	if err != nil {
-		t.Skipf("skipping: bundled exiftool not available (%v)", err)
-	}
+	realRunner := newTestEngine(t).Runner
 
 	dir := t.TempDir()
 	srcPath := newTaggedJPEG(t, realRunner, dir)

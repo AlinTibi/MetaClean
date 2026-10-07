@@ -29,6 +29,7 @@ html, body {
 }
 
 #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+.pdf-warning { padding: 7px 14px; color: var(--warn); background: var(--bg-elevated); border-top: 1px solid var(--border); flex-shrink: 0; font-size: 12px; }
 
 /* Toolbar */
 .toolbar {

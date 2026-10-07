@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"MetaClean/internal/exiftool"
 	"MetaClean/internal/model"
@@ -124,7 +125,18 @@ func (e *Engine) cleanInPlace(ctx context.Context, req model.CleanRequest, entry
 	result.BackupPath = backupPath
 
 	if err := e.Runner.WriteArgsInPlace(ctx, entry.Path, tagArgs); err != nil {
-		result.Error = describeCleanError(err)
+		// A failed or cancelled write may have changed the file. Re-read it
+		// without the cancelled write context; never display the old scan.
+		refreshCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		result.OutputPath = entry.Path
+		e.verify(refreshCtx, entry.Path, &result)
+		verificationError := result.Error
+		result.Error = "in-place cleaning failed; inspect the current file and use the backup if needed: " + describeCleanError(err)
+		if verificationError != "" {
+			result.Error += "; " + verificationError
+		}
+		result.Inspection.CleanError = result.Error
 		return result
 	}
 
@@ -142,9 +154,12 @@ func (e *Engine) cleanInPlace(ctx context.Context, req model.CleanRequest, entry
 // even though remaining metadata (including zero) is a perfectly valid
 // verified outcome.
 func (e *Engine) verify(ctx context.Context, path string, result *model.CleanFileResult) bool {
-	verified := e.Scanner.Scan(ctx, "verify", path)
+	verified := e.Scanner.Scan(ctx, result.FileID, path)
+	verified.CleanedPath = path
+	result.Inspection = verified
 	if verified.Status == model.StatusError {
 		result.Error = "metadata removal ran, but MetaClean could not verify the result: " + verified.Error
+		verified.CleanError = result.Error
 		return false
 	}
 	result.AfterCount = verified.MetadataCount()

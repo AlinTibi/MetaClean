@@ -201,8 +201,8 @@ func (a *App) ClearFiles() {
 
 // CleanProgress is emitted on the "clean:progress" event after each file.
 type CleanProgress struct {
-	Index  int                    `json:"index"`
-	Total  int                    `json:"total"`
+	Index  int                   `json:"index"`
+	Total  int                   `json:"total"`
 	Result model.CleanFileResult `json:"result"`
 }
 
@@ -231,21 +231,39 @@ func (a *App) StartClean(req model.CleanRequest) error {
 	a.mu.Unlock()
 
 	go func() {
-		defer func() {
-			a.mu.Lock()
-			a.cleaning = false
-			a.cancel = nil
-			a.mu.Unlock()
-		}()
+		defer cancel()
 
 		results := a.cleaner.CleanBatch(ctx, req, entries, func(index, total int, result model.CleanFileResult) {
+			a.applyCleanResult(result)
 			wailsruntime.EventsEmit(a.ctx, "clean:progress", CleanProgress{Index: index, Total: total, Result: result})
 		})
 
+		// A done event enables Clean immediately: release the batch lock first.
+		a.mu.Lock()
+		a.cleaning = false
+		a.cancel = nil
+		a.mu.Unlock()
 		wailsruntime.EventsEmit(a.ctx, "clean:done", results)
 	}()
 
 	return nil
+}
+
+// Replace the queue snapshot before notifying the UI, so inspectors and
+// exports describe the same actual file. Unchanged failures retain their scan
+// and carry the cleaning error into exports as well as the batch summary.
+func (a *App) applyCleanResult(result model.CleanFileResult) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if entry, exists := a.files[result.FileID]; exists {
+		if result.Inspection != nil {
+			a.files[result.FileID] = result.Inspection
+		} else if !result.Success && result.Error != "" {
+			current := *entry
+			current.CleanError = result.Error
+			a.files[result.FileID] = &current
+		}
+	}
 }
 
 // CancelClean stops an in-progress batch after the current file finishes

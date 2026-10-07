@@ -33,6 +33,22 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Fetch pinned ExifTool
+        shell: pwsh
+        run: ./scripts/fetch-exiftool.ps1
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test
+        env:
+          METACLEAN_EXIFTOOL_PATH: ${{ github.workspace }}/tools/exiftool/exiftool.exe
+        run: go test ./... -v
+
       - name: Determine pinned Wails CLI version from go.mod
         id: wails_version
         shell: pwsh
@@ -45,53 +61,15 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ steps.wails_version.outputs.version }}
 
       - name: Build application
-        run: wails build -clean -s
+        run: wails build -clean -s -webview2 browser
 
-      # ExifTool is Phil Harvey's software (exiftool.org). His official
-      # Windows build is published via SourceForge, but that download
-      # blocks automated/CI requests (HTTP 403 — verified against a real
-      # GitHub Actions windows-latest runner, not a local quirk), so this
-      # does NOT download directly from SourceForge/the publisher. It
-      # instead runs scripts/fetch-exiftool.ps1, which pulls the pinned
-      # exiftool-vendored.exe npm package — a transparent, MIT-licensed
-      # repackaging that vendors Phil Harvey's official Windows build
-      # unmodified. That script owns the pinned package version and
-      # verifies its integrity (npm's published SHA-512) before
-      # extracting anything; this is the same script contributors run
-      # locally, kept in one place. Runtime stays fully offline — this
-      # only ever runs at build/release time.
-      - name: Fetch pinned ExifTool (vendored npm package)
-        shell: pwsh
-        run: ./scripts/fetch-exiftool.ps1
-
-      - name: Bundle ExifTool with the built application
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path build/bin/exiftool | Out-Null
-          Copy-Item -Recurse -Force tools/exiftool/* build/bin/exiftool/
-          & "build/bin/exiftool/exiftool.exe" -ver
-
-      - name: Package release
+      - name: Package release with the pinned ExifTool and support files
         id: package
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}"
-          $zipName = "MetaClean-$version-win-x64.zip"
-          $checksumName = "$zipName.sha256"
-
-          New-Item -ItemType Directory -Force -Path stage | Out-Null
-          Copy-Item "build/bin/MetaClean.exe" "stage/MetaClean.exe"
-          Copy-Item -Recurse "build/bin/exiftool" "stage/exiftool"
-          Copy-Item "README.md" "stage/README.md"
-          Copy-Item "LICENSE" "stage/LICENSE"
-          Copy-Item "THIRD_PARTY_NOTICES.md" "stage/THIRD_PARTY_NOTICES.md"
-
-          Compress-Archive -Path "stage/*" -DestinationPath $zipName -CompressionLevel Optimal
-          $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $zipName" | Set-Content -NoNewline $checksumName
-
-          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
-          "checksum_name=$checksumName" >> $env:GITHUB_OUTPUT
+          $package = ./scripts/package-release.ps1 -Tag "${{ github.ref_name }}"
+          "zip_name=$($package.Zip)" >> $env:GITHUB_OUTPUT
+          "checksum_name=$($package.Checksum)" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
         env:

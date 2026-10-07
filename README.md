@@ -19,6 +19,13 @@ extract it, and run `MetaClean.exe`. Keep the extracted files together.
 Microsoft Edge WebView2 Runtime is required. Install it separately if missing.
 Keep the bundled `exiftool/` directory beside `MetaClean.exe`.
 
+## v1.0.1 release candidate
+
+The next patch refreshes the inspector and exported reports from the actual
+cleaned file, retains partial-failure details, resolves ExifTool independently
+of the working directory, and adds a distinct privacy-shield/eraser icon.
+See [candidate release notes](RELEASE_NOTES.md). v1.0.0 remains the public release.
+
 ## Screenshots
 
 ![MetaClean Windows application](docs/images/main.webp)
@@ -105,6 +112,12 @@ Requirements:
 ./scripts/fetch-exiftool.ps1
 
 # Run the Go test suite
+cd frontend
+npm ci
+npm test
+npm run build
+cd ..
+$env:METACLEAN_EXIFTOOL_PATH = (Resolve-Path tools/exiftool/exiftool.exe).Path
 go test ./...
 
 # Launch in dev mode (hot reload)
@@ -112,12 +125,17 @@ wails dev
 
 # Build a production executable (build/bin/MetaClean.exe)
 # then copy tools/exiftool next to it as build/bin/exiftool for a full local run
-wails build
+wails build -clean -s -webview2 browser
+./scripts/package-release.ps1 -Tag v1.0.1
 ```
 
 The published release ZIP bundles `MetaClean.exe` together with an
 `exiftool/` folder containing the pinned ExifTool build — MetaClean looks
 for it right next to its own executable at runtime.
+Source-checkout builds also search above their executable directory; they never
+search the current working directory. Tests and `go run` can use the explicit
+absolute `METACLEAN_EXIFTOOL_PATH` override. Missing engines produce a clear
+error; MetaClean does not search PATH or download them.
 
 ## Architecture
 

@@ -20,30 +20,35 @@ const exeName = "exiftool.exe"
 //     developer/operator override).
 //  2. "exiftool/exiftool.exe" next to the running executable — the layout
 //     used by packaged builds.
-//  3. "tools/exiftool/exiftool.exe" found by walking up from the current
-//     working directory — a developer convenience so `wails dev` and
-//     `go run` work from a source checkout without a packaged build,
-//     using the same local-only cache `scripts/fetch-exiftool.ps1`
-//     populates.
+//  3. "tools/exiftool/exiftool.exe" found above the executable directory,
+//     for builds in a source checkout. Go tests/go run in a temporary
+//     build directory use the explicit override. The CWD is never searched.
 func Locate() (string, error) {
-	if override := os.Getenv("METACLEAN_EXIFTOOL_PATH"); override != "" {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	return locateFromExecutable(exePath, os.Getenv("METACLEAN_EXIFTOOL_PATH"))
+}
+
+func locateFromExecutable(exePath, override string) (string, error) {
+	if override != "" {
+		if !filepath.IsAbs(override) {
+			return "", errors.New("METACLEAN_EXIFTOOL_PATH must be an absolute path")
+		}
 		if fileExists(override) {
 			return override, nil
 		}
 		return "", errors.New("METACLEAN_EXIFTOOL_PATH is set but does not point to a file: " + override)
 	}
 
-	if exePath, err := os.Executable(); err == nil {
-		candidate := filepath.Join(filepath.Dir(exePath), "exiftool", exeName)
-		if fileExists(candidate) {
-			return candidate, nil
-		}
+	exeDir := filepath.Dir(exePath)
+	candidate := filepath.Join(exeDir, "exiftool", exeName)
+	if fileExists(candidate) {
+		return candidate, nil
 	}
-
-	if cwd, err := os.Getwd(); err == nil {
-		if found, ok := searchUpward(cwd, filepath.Join("tools", "exiftool", exeName)); ok {
-			return found, nil
-		}
+	if found, ok := searchUpward(exeDir, filepath.Join("tools", "exiftool", exeName)); ok {
+		return found, nil
 	}
 
 	return "", ErrNotFound

@@ -39,6 +39,7 @@ export interface FileEntry {
     metadata: MetadataEntry[];
     sensitiveCategories: Category[];
     cleanedPath?: string;
+    cleanError?: string;
 }
 
 export interface CleanRequest {
@@ -60,6 +61,7 @@ export interface CleanFileResult {
     beforeCount: number;
     afterCount: number;
     remaining?: MetadataEntry[];
+    inspection?: FileEntry;
 }
 
 export interface CleanProgress {

@@ -7,12 +7,12 @@ package model
 type FileStatus string
 
 const (
-	StatusPending            FileStatus = "pending"
-	StatusClean               FileStatus = "clean"
-	StatusMetadataFound       FileStatus = "metadata_found"
-	StatusSensitiveMetadata   FileStatus = "sensitive_metadata_found"
-	StatusUnsupported         FileStatus = "unsupported"
-	StatusError               FileStatus = "error"
+	StatusPending           FileStatus = "pending"
+	StatusClean             FileStatus = "clean"
+	StatusMetadataFound     FileStatus = "metadata_found"
+	StatusSensitiveMetadata FileStatus = "sensitive_metadata_found"
+	StatusUnsupported       FileStatus = "unsupported"
+	StatusError             FileStatus = "error"
 )
 
 // Category groups metadata tags for display and for selecting what a
@@ -20,14 +20,14 @@ const (
 type Category string
 
 const (
-	CategoryGPS         Category = "gps"
-	CategoryAuthor      Category = "author"
-	CategoryCamera      Category = "camera"
-	CategorySoftware    Category = "software"
-	CategoryCompany     Category = "company"
-	CategoryComments    Category = "comments"
-	CategoryTimestamps  Category = "timestamps"
-	CategoryOther       Category = "other"
+	CategoryGPS        Category = "gps"
+	CategoryAuthor     Category = "author"
+	CategoryCamera     Category = "camera"
+	CategorySoftware   Category = "software"
+	CategoryCompany    Category = "company"
+	CategoryComments   Category = "comments"
+	CategoryTimestamps Category = "timestamps"
+	CategoryOther      Category = "other"
 )
 
 // AllCategories lists every category in the order they should be presented
@@ -45,10 +45,10 @@ var AllCategories = []Category{
 
 // MetadataEntry is a single tag discovered in a file.
 type MetadataEntry struct {
-	Group     string   `json:"group"`     // ExifTool group, e.g. "EXIF", "XMP-dc", "IPTC"
-	Tag       string   `json:"tag"`       // ExifTool tag name, e.g. "GPSLatitude"
-	Label     string   `json:"label"`     // Human-readable label
-	Value     string   `json:"value"`     // String representation of the value
+	Group     string   `json:"group"` // ExifTool group, e.g. "EXIF", "XMP-dc", "IPTC"
+	Tag       string   `json:"tag"`   // ExifTool tag name, e.g. "GPSLatitude"
+	Label     string   `json:"label"` // Human-readable label
+	Value     string   `json:"value"` // String representation of the value
 	Category  Category `json:"category"`
 	Sensitive bool     `json:"sensitive"`
 	Removable bool     `json:"removable"` // false for structural tags ExifTool can't/won't delete
@@ -57,17 +57,18 @@ type MetadataEntry struct {
 // FileEntry is one row in the queue: a file plus everything MetaClean knows
 // about its metadata.
 type FileEntry struct {
-	ID         string          `json:"id"`
-	Path       string          `json:"path"`
-	Name       string          `json:"name"`
-	Ext        string          `json:"ext"`
-	Size       int64           `json:"size"`
-	Status     FileStatus      `json:"status"`
-	Error      string          `json:"error,omitempty"`
-	Writable   bool            `json:"writable"`
-	Metadata   []MetadataEntry `json:"metadata"`
-	Sensitive  []Category      `json:"sensitiveCategories"`
-	CleanedPath string         `json:"cleanedPath,omitempty"`
+	ID          string          `json:"id"`
+	Path        string          `json:"path"`
+	Name        string          `json:"name"`
+	Ext         string          `json:"ext"`
+	Size        int64           `json:"size"`
+	Status      FileStatus      `json:"status"`
+	Error       string          `json:"error,omitempty"`
+	Writable    bool            `json:"writable"`
+	Metadata    []MetadataEntry `json:"metadata"`
+	Sensitive   []Category      `json:"sensitiveCategories"`
+	CleanedPath string          `json:"cleanedPath,omitempty"`
+	CleanError  string          `json:"cleanError,omitempty"`
 }
 
 // MetadataCount returns how many metadata entries were found.
@@ -87,25 +88,28 @@ const (
 // CleanRequest describes one batch cleaning operation submitted by the
 // frontend.
 type CleanRequest struct {
-	FileIDs          []string   `json:"fileIds"`
-	Profile          Profile    `json:"profile"`
-	CustomCategories []Category `json:"customCategories,omitempty"`
-	OutputFolder     string     `json:"outputFolder"`
-	Suffix           string     `json:"suffix"`
-	ReplaceOriginal  bool       `json:"replaceOriginal"`
-	PreserveTimestamps bool     `json:"preserveTimestamps"`
+	FileIDs            []string   `json:"fileIds"`
+	Profile            Profile    `json:"profile"`
+	CustomCategories   []Category `json:"customCategories,omitempty"`
+	OutputFolder       string     `json:"outputFolder"`
+	Suffix             string     `json:"suffix"`
+	ReplaceOriginal    bool       `json:"replaceOriginal"`
+	PreserveTimestamps bool       `json:"preserveTimestamps"`
 }
 
 // CleanFileResult is the outcome of cleaning a single file.
 type CleanFileResult struct {
-	FileID        string          `json:"fileId"`
-	Success       bool            `json:"success"`
-	Error         string          `json:"error,omitempty"`
-	OutputPath    string          `json:"outputPath,omitempty"`
-	BackupPath    string          `json:"backupPath,omitempty"`
-	BeforeCount   int             `json:"beforeCount"`
-	AfterCount    int             `json:"afterCount"`
-	Remaining     []MetadataEntry `json:"remaining,omitempty"`
+	FileID      string          `json:"fileId"`
+	Success     bool            `json:"success"`
+	Error       string          `json:"error,omitempty"`
+	OutputPath  string          `json:"outputPath,omitempty"`
+	BackupPath  string          `json:"backupPath,omitempty"`
+	BeforeCount int             `json:"beforeCount"`
+	AfterCount  int             `json:"afterCount"`
+	Remaining   []MetadataEntry `json:"remaining,omitempty"`
+	// Inspection is a fresh scan of the actual output (or the original after
+	// an interrupted in-place write), including an error if it cannot be read.
+	Inspection *FileEntry `json:"inspection,omitempty"`
 }
 
 // Settings persists user preferences between runs.

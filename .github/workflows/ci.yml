@@ -36,10 +36,20 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Fetch pinned ExifTool
+        shell: pwsh
+        run: ./scripts/fetch-exiftool.ps1
+
       - name: Go vet
         run: go vet ./...
 
       - name: Go test
+        env:
+          METACLEAN_EXIFTOOL_PATH: ${{ github.workspace }}/tools/exiftool/exiftool.exe
         run: go test ./... -v
 
       - name: Determine pinned Wails CLI version from go.mod
@@ -55,4 +65,4 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ steps.wails_version.outputs.version }}
 
       - name: Build application
-        run: wails build -clean -s
+        run: wails build -clean -s -webview2 browser

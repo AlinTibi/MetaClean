@@ -83,6 +83,7 @@ export namespace model {
 	    metadata: MetadataEntry[];
 	    sensitiveCategories: string[];
 	    cleanedPath?: string;
+	    cleanError?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileEntry(source);
@@ -101,6 +102,7 @@ export namespace model {
 	        this.metadata = this.convertValues(source["metadata"], MetadataEntry);
 	        this.sensitiveCategories = source["sensitiveCategories"];
 	        this.cleanedPath = source["cleanedPath"];
+	        this.cleanError = source["cleanError"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

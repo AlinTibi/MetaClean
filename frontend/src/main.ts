@@ -1,4 +1,5 @@
 import './style.css';
+import { applyCleanResult, cleanSummary } from './clean-state';
 import {
     AddFilesDialog, AddFolderDialog, RemoveFiles, ClearFiles, GetFiles,
     StartClean, CancelClean, SelectOutputFolder, OpenOutputFolder,
@@ -7,7 +8,7 @@ import {
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import {
     CATEGORY_LABELS, STATUS_LABELS,
-    type Category, type CleanProgress, type EngineStatus, type FileEntry,
+    type Category, type CleanFileResult, type CleanProgress, type EngineStatus, type FileEntry,
     type MetadataEntry, type Profile, type Settings,
 } from './types';
 
@@ -73,6 +74,7 @@ const CUSTOM_CATEGORIES: Category[] = ['gps', 'author', 'camera', 'software', 'c
 
 function setStatus(message: string): void {
     statusText.textContent = message;
+    statusText.title = message;
 }
 
 function setProgress(fraction: number): void {
@@ -132,7 +134,9 @@ function renderQueue(): void {
         const badge = document.createElement('span');
         badge.className = `status-badge status-${f.status}`;
         badge.textContent = STATUS_LABELS[f.status];
+        if (f.cleanError) badge.textContent = `Cleaning failed · ${STATUS_LABELS[f.status]}`;
         if (f.error) badge.title = f.error;
+        if (f.cleanError) badge.title = f.cleanError;
         statusTd.appendChild(badge);
 
         tr.append(checkTd, nameTd, typeTd, sizeTd, metaTd, statusTd);
@@ -175,6 +179,7 @@ function renderInspector(): void {
     }
 
     inspectorTitle.textContent = file.name;
+    inspectorTitle.title = file.path;
 
     if (file.status === 'unsupported') {
         inspectorBody.innerHTML = '<div class="inspector-empty">This file type is not supported for metadata inspection.</div>';
@@ -185,7 +190,13 @@ function renderInspector(): void {
         return;
     }
     if (file.metadata.length === 0) {
-        inspectorBody.innerHTML = '<div class="inspector-empty">No metadata found — this file is clean.</div>';
+        inspectorBody.innerHTML = '<div class="inspector-empty">No metadata found in the current scan.</div>';
+        if (file.cleanError) {
+            const warning = document.createElement('p');
+            warning.className = 'warning';
+            warning.textContent = file.cleanError;
+            inspectorBody.prepend(warning);
+        }
         return;
     }
 
@@ -200,8 +211,14 @@ function renderInspector(): void {
     }
 
     inspectorBody.innerHTML = '';
+    if (file.cleanError) {
+        const warning = document.createElement('p');
+        warning.className = 'warning';
+        warning.textContent = file.cleanError;
+        inspectorBody.appendChild(warning);
+    }
     if (groups.size === 0) {
-        inspectorBody.innerHTML = '<div class="inspector-empty">No metadata matches your filter.</div>';
+        inspectorBody.insertAdjacentHTML('beforeend', '<div class="inspector-empty">No metadata matches your filter.</div>');
         return;
     }
 
@@ -423,20 +440,21 @@ btnCancel.addEventListener('click', () => void CancelClean());
 EventsOn('clean:progress', (progress: CleanProgress) => {
     setProgress((progress.index + 1) / progress.total);
     const file = files.find((f) => f.id === progress.result.fileId);
+    files = applyCleanResult(files, progress.result);
+    renderQueue();
+    renderInspector();
     if (file) {
-        setStatus(
-            progress.result.success
-                ? `Cleaned ${file.name}: ${progress.result.beforeCount} → ${progress.result.afterCount} metadata items.`
-                : `Failed to clean ${file.name}: ${progress.result.error}`
-        );
+        setStatus(cleanSummary([progress.result], [file]));
     }
 });
 
-EventsOn('clean:done', (results: Array<{ success: boolean }>) => {
+EventsOn('clean:done', (results: CleanFileResult[]) => {
     setCleaning(false);
     setProgress(0);
-    const okCount = results.filter((r) => r.success).length;
-    setStatus(`Cleaning finished: ${okCount}/${results.length} file(s) succeeded.`);
+    for (const result of results) files = applyCleanResult(files, result);
+    renderQueue();
+    renderInspector();
+    setStatus(cleanSummary(results, files));
 });
 
 EventsOn('files:added', (added: FileEntry[] | null, errMsg: string) => {
