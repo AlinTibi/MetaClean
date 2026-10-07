@@ -11,20 +11,20 @@ need to install it yourself.
 
 ## Current release and download
 
-[MetaClean v1.0.0](https://github.com/AlinTibi/MetaClean/releases/tag/v1.0.0)
+[MetaClean v1.0.1](https://github.com/AlinTibi/MetaClean/releases/tag/v1.0.1)
 is the current Windows x64 release.
 
-[Download the portable ZIP](https://github.com/AlinTibi/MetaClean/releases/download/v1.0.0/MetaClean-v1.0.0-win-x64.zip),
+[Download the portable ZIP](https://github.com/AlinTibi/MetaClean/releases/download/v1.0.1/MetaClean-v1.0.1-win-x64.zip),
 extract it, and run `MetaClean.exe`. Keep the extracted files together.
 Microsoft Edge WebView2 Runtime is required. Install it separately if missing.
 Keep the bundled `exiftool/` directory beside `MetaClean.exe`.
 
-## v1.0.1 release candidate
+## v1.0.1 improvements
 
-The next patch refreshes the inspector and exported reports from the actual
+This patch refreshes the inspector and exported reports from the actual
 cleaned file, retains partial-failure details, resolves ExifTool independently
 of the working directory, and adds a distinct privacy-shield/eraser icon.
-See [candidate release notes](RELEASE_NOTES.md). v1.0.0 remains the public release.
+See [release notes](RELEASE_NOTES.md).
 
 ## Screenshots
 
