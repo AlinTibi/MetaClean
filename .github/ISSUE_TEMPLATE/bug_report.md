@@ -19,6 +19,10 @@ assignees: ""
 - Application version:
 - Windows version:
 
+## Logs / error messages
+
+Paste relevant errors after removing secrets and personal paths.
+
 ## Additional details
 
 Optional screenshots or a small non-sensitive example. Remove personal data,
